@@ -15,6 +15,10 @@ client.on('ready', () => {
   console.log(`Logged in as ${client.user.tag}!`);
 });
 
+const isEnthusiastRole = (roleName) => {
+  return roleName.endsWith(' Enthusiast');
+};
+
 client.on('guildMemberUpdate', async (oldMember, newMember) => {
   const addedRoles = newMember.roles.cache.filter(
     (role) => !oldMember.roles.cache.has(role.id)
@@ -24,6 +28,8 @@ client.on('guildMemberUpdate', async (oldMember, newMember) => {
   );
 
   for (const addedRole of addedRoles.values()) {
+    const enthusiast = isEnthusiastRole(addedRole.name);
+
     // Check if the role already exists in the table
     const { data: existingRole } = await supabase
       .from('role_updates')
@@ -38,6 +44,7 @@ client.on('guildMemberUpdate', async (oldMember, newMember) => {
         .from('role_updates')
         .update({
           user_id: newMember.id,
+          enthusiast,
           timestamp: new Date().toISOString(),
         })
         .eq('id', existingRole.id);
@@ -49,6 +56,7 @@ client.on('guildMemberUpdate', async (oldMember, newMember) => {
           {
             user_id: newMember.id,
             role: addedRole.name,
+            enthusiast,
             timestamp: new Date().toISOString(),
           },
         ])
