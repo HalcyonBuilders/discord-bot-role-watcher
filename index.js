@@ -11,9 +11,70 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
 });
 
-client.on('ready', () => {
+client.on('ready', async () => {
   console.log(`Logged in as ${client.user.tag}!`);
 });
+
+client.on('guildCreate', async () => {
+  console.log(`Joined new server: ${guild.name} (id: ${guild.id})`);
+
+  for (const [guildId, guild] of client.guilds.cache) {
+    try {
+      // Fetch all members of the guild
+      await guild.members.fetch();
+
+      for (const [memberId, member] of guild.members.cache) {
+        console.log(member.user.username);
+        for (const [roleId, role] of member.roles.cache) {
+          if (role.name !== '@everyone' && role.name !== 'role_watcher') {
+            console.log('role', role.name);
+            await addRoleToDatabase(role, memberId);
+          }
+        }
+      }
+    } catch (error) {
+      console.error(
+        `Error fetching guild members for guild ${guildId}:`,
+        error
+      );
+    }
+  }
+});
+
+const addRoleToDatabase = async (role, userId) => {
+  const enthusiast = isEnthusiastRole(role.name);
+
+  // Check if the role already exists for this usedId
+  const { data: existingRole } = await supabase
+    .from('role_updates')
+    .select('id')
+    .eq('role', role.name)
+    .eq('user_id', userId)
+    .single();
+
+  if (existingRole) {
+    // If the role exists, update the row with the new timestamp
+    await supabase
+      .from('role_updates')
+      .update({
+        timestamp: new Date().toISOString(),
+      })
+      .eq('id', existingRole.id);
+  } else {
+    // If the role does not exist, insert a new row
+    await supabase
+      .from('role_updates')
+      .insert([
+        {
+          user_id: userId,
+          role: role.name,
+          enthusiast,
+          timestamp: new Date().toISOString(),
+        },
+      ])
+      .single();
+  }
+};
 
 const isEnthusiastRole = (roleName) => {
   return roleName.endsWith(' Enthusiast');
@@ -28,40 +89,7 @@ client.on('guildMemberUpdate', async (oldMember, newMember) => {
   );
 
   for (const addedRole of addedRoles.values()) {
-    const enthusiast = isEnthusiastRole(addedRole.name);
-
-    // Check if the role already exists in the table
-    const { data: existingRole } = await supabase
-      .from('role_updates')
-      .select('id')
-      .eq('role', addedRole.name)
-      .single();
-    console.log(existingRole);
-
-    if (existingRole) {
-      // If the role exists, update the row with the new user_id and timestamp
-      await supabase
-        .from('role_updates')
-        .update({
-          user_id: newMember.id,
-          enthusiast,
-          timestamp: new Date().toISOString(),
-        })
-        .eq('id', existingRole.id);
-    } else {
-      // If the role does not exist, insert a new row
-      await supabase
-        .from('role_updates')
-        .insert([
-          {
-            user_id: newMember.id,
-            role: addedRole.name,
-            enthusiast,
-            timestamp: new Date().toISOString(),
-          },
-        ])
-        .single();
-    }
+    addRoleToDatabase(addedRole, newMember.id);
   }
 
   for (const removedRole of removedRoles.values()) {
