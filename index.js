@@ -18,26 +18,21 @@ client.on('ready', async () => {
 client.on('guildCreate', async (guild) => {
   console.log(`Joined new server: ${guild.name} (id: ${guild.id})`);
 
-  for (const [guildId, guild] of client.guilds.cache) {
-    try {
-      // Fetch all members of the guild
-      await guild.members.fetch();
+  try {
+    // Fetch all members of the guild
+    await guild.members.fetch();
 
-      for (const [memberId, member] of guild.members.cache) {
-        console.log(member.user.username);
-        for (const [roleId, role] of member.roles.cache) {
-          if (role.name !== '@everyone' && role.name !== 'role_watcher') {
-            console.log('role', role.name);
-            await addRoleToDatabase(role, memberId);
-          }
+    for (const [memberId, member] of guild.members.cache) {
+      console.log(member.user.username);
+      for (const [roleId, role] of member.roles.cache) {
+        if (role.name !== '@everyone' && role.name !== 'role_watcher') {
+          console.log('role', role.name);
+          await addRoleToDatabase(role, memberId);
         }
       }
-    } catch (error) {
-      console.error(
-        `Error fetching guild members for guild ${guildId}:`,
-        error
-      );
     }
+  } catch (error) {
+    console.error(`Error fetching guild members for guild ${guild.id}:`, error);
   }
 });
 
