@@ -15,7 +15,7 @@ client.on('ready', async () => {
   console.log(`Logged in as ${client.user.tag}!`);
 });
 
-client.on('guildCreate', async () => {
+client.on('guildCreate', async (guild) => {
   console.log(`Joined new server: ${guild.name} (id: ${guild.id})`);
 
   for (const [guildId, guild] of client.guilds.cache) {
